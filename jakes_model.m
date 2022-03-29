@@ -1,59 +1,61 @@
-            % __________________________________________
-            % MODIFICATION OF JAKES MODEL (DENTS MODEL)
-            % __________________________________________
+%%%%%%%%%%%%%%%%%%%%%%% JAKES MODEL REVISITED (DENT MODEL) %%%%%%%%%%%%%%%%
+%                  이름: ONYEKWELU MICHAEL CHISOM ( 마이클 치솜) 
+%                  학번: 2022151222
+%                  전공: 융합전자공학과
+%                  과정 제목: 무선 통신
+%                  주제: FADING CHANNEL (MULTIPLE UNCORRELATED SIGNAL)
+%                  교수: 문의찬 교수님
+%                  날짜: 2022년 03월 30일
+%                  과정 번호: ENE 1015
 
-% N_equal_strenght_Ray =  Number of equal strength signal arriving at the
-% receiver, using a multiple of two will simulate fine
+%%%%%%%%%%%%%%%%%%%%%% DECLARATION OF VARIABLES %%%%%%%%%%%%%%%%%%%%%%%%%%%
+N_equal_strength_Ray = 1024;
+Number_of_wave  = 2;
+sampling_interval = 383.5e-6;
+Number_of_samples = 1e6;
+Number_of_oscillators = N_equal_strength_Ray/4;  
+Normalization_factor = sqrt(2/Number_of_oscillators); 
+n = 1:Number_of_oscillators;
+arrival_angle = (2*pi*(n-0.5))/N_equal_strength_Ray;
+Beta = (pi*n)/Number_of_oscillators;
+Maximum_doppler_shift = 2*pi*83;
+Hadamard_matrices = hadamard(Number_of_oscillators);
+theta_n = rand(1, length(n))*2*pi; % Random oscillator phase 
+t=0:sampling_interval:(Number_of_samples-1)*sampling_interval;
+% APPLYING VECTORIZED ALGEBRA 
+T_k = Normalization_factor .* Hadamard_matrices(Number_of_wave,:).* (exp(-1i*Beta))* transpose(cos((transpose(Maximum_doppler_shift.* t) * cos(arrival_angle)) + theta_n));
 
-% carrier_freq =  Carrier frequency of the signal from the transmitter. 
-% Normally 800 or 1900 MHz for mobile comms
+%%%%%%%%%%%%%%%%%%%% PLOTS AND DISPLAY %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+figure(1)
+[Auto_Corr_Value, tau] = xcorr(T_k, 'normalized');
+Auto_Corr_Value = real(Auto_Corr_Value);
+idx0 = find(tau==0);
+tau = tau * sampling_interval; 
+plot(tau, Auto_Corr_Value, 'ob');
+xlim([tau(idx0) tau(idx0+50)]);
+xlabel('\omega_m\tau'); 
+ylabel('Re[Autocorrelation]'); 
+title('Autocorrelation graph for a fading channel');
+grid on
+hold on
+J0 = besselj(0, Maximum_doppler_shift*tau);
+plot(tau, J0, 'r')
+hold off
+legend('Simulated', 'theoretical')
 
-% velocity_of_mobile = velocity of the mobile that is to receive the signal
-% expressed in meters per second
+figure(2)
+Abs_T = abs(T_k);
+Histogram = histogram(Abs_T, 'Normalization','pdf', 'DisplayStyle','bar', 'EdgeColor','auto');
+hold on;
+ax = gca;
+x = linspace(ax.XLim(1), ax.XLim(2), 1000);
+plot(x, Histogram, 'LineWidth', 2)
+xlabel('x'); 
+ylabel('probability density'); 
+title('Probability density function (PDF)');
+axis tight
+grid on
 
-% speed_of_light =  3*10^8 m/s
-% SymbolRate - scalar power of 2 and is in kilo-symbols-per-sec is used to
-% specify what should be the transmission data rate. Slower rates will
-% provide slowly fading channels. Normal voice and soem data rates are
-% 64-256 ksps
 
-% Length of the generated signal seqence 
-% NumberWave = Number of wave form to be selected in order not to use the
-% entire wave generated (these waves are uncorrelated since they are formed
-% using the Hadamard matrix
-
-
-function [omega_mTau,T_k] = jakes_model(N_equal_strenght_Ray, carrier_freq, velocity_of_mobile, speed_of_light, symbol_rate, Length_generated_signal, NumberWave)
-
-   No = N_equal_strenght_Ray/4;  % No =  is the number of oscillators
-   K = sqrt(2/No); % Normalization factor
-   n = 1:No;
-   arrival_angle = (2*pi*(n-0.5))/N_equal_strenght_Ray;
-   Beta = (pi*n)/No;
-   Maximum_doppler_shift = (2*pi*carrier_freq*velocity_of_mobile)/ speed_of_light;
-   A_j = hadamard(No);
-   rng('default')
-   theta_n = rand(1, length(n))*2*pi; % Random oscillator phase 
-   t=(1/(symbol_rate*1000):1/(symbol_rate*1000):1/(symbol_rate*1000) * Length_generated_signal);
-
-   % APPLYING VECTORIZED ALGEBRA 
-   T_k = K .* (A_j(1:NumberWave, n).* (exp(-1i*Beta)))* cos(((Maximum_doppler_shift.* t).' * cos(arrival_angle)) + theta_n).';
-   omega_mTau = (1/(symbol_rate*1000)) * (Maximum_doppler_shift/(2*pi));
-   [C, Lags] = autocorr(T_k(1,:), length(t)-1);
-   tau = Lags * omega_mTau;
-   plot(tau, C, '-b');
-   xlabel('Normalized times'); ylabel('Normalized Autocorrelation'); 
-   title('Autocorrelation of the first waveform k=1');
-   grid on
-
-   % _____________________________________________________________________
-   % THEORETICAL COMPUTATION OF AUTOCORRELATION USING THE BESSEL FUNCTION
-   % _____________________________________________________________________
-  
-   hold on
-   z = Maximum_doppler_shift*tau;
-   r = besselj(0,z);
-   plot(tau, r, '+r');
-end
 
 
